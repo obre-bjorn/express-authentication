@@ -5,6 +5,7 @@ const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
+const bycrypt = require('bcryptjs')
 require('dotenv').config()
 
 
@@ -39,12 +40,18 @@ passport.use(
         if (!user) {
             return done(null, false, { message: "Incorrect username" });
         };
-        if (user.password !== password) {
+
+        const match = await bycrypt.compare(password,user.password)
+
+        if (!match) {
             return done(null, false, { message: "Incorrect password" });
         };
+
         return done(null, user);
+
         } catch(err) {
-        return done(err);
+
+            return done(err);
         };
     })
 );
@@ -79,13 +86,24 @@ app.get('/sign-up', (req,res,next) =>{
 app.post('/sign-up', async (req,res,next) =>{
 
     try {
-        const user = new User({
-            username: req.body.username,
-            password: req.body.password
+
+
+        bycrypt.hash(req.body.password,10, async (err,hashedPassword) =>{
+
+            if (err){
+                return next(err)
+            }
+
+            const user = new User({
+                username: req.body.username,
+                password: hashedPassword
+            })
+
+            
+            const result = await user.save()
+            res.redirect('/')
         })
 
-        const result = await user.save()
-        res.redirect('/')
     }catch(err){
         return next(err)
     }
